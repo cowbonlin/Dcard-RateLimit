@@ -1,0 +1,5 @@
+dbConfig.js
+secret.env
+bin
+public
+node_modules
