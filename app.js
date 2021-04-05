@@ -26,7 +26,7 @@ app.use(function(req, res, next) {
     (async () => {
         let rateLimit = await RateLimit.findOne({
             where: {
-                ip: req.ip,
+                ip: req.headers['X-Real-IP'] || req.ip || req.connection.remoteAddress,
                 time: {
                     [Op.lt]: new Date(),
                     [Op.gt]: new Date(new Date() - config.rateLimitInterval * 60 * 60 * 1000)
