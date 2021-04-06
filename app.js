@@ -1,15 +1,15 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var logger = require('morgan');
+const createError = require('http-errors');
+const express = require('express');
+const path = require('path');
+const logger = require('morgan');
 const { Op } = require("sequelize");
 
-const sequelize = require('./sequelize');
-const { User, RateLimit } = require('./models');
-var indexRouter = require('./routes/index');
-const config = require('./config');
+const indexRouter = require('./routes/index');
+const rateLimit = require('./middleware/rateLimit');
 
-var app = express();
+const app = express();
+
+
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -22,54 +22,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.enable('trust proxy');
 
-app.use(function(req, res, next) {
-    (async () => {
-        let rateLimit = await RateLimit.findOne({
-            where: {
-                ip: req.headers['X-Real-IP'] || req.ip || req.connection.remoteAddress,
-                time: {
-                    [Op.lt]: new Date(),
-                    [Op.gt]: new Date(new Date() - config.rateLimitInterval * 60 * 60 * 1000)
-                }
-            }
-        });
-        if (rateLimit) {
-            console.log(JSON.stringify(rateLimit));
-            if (rateLimit.count >= config.rateLimitCount) {
-                next(createError(429));
-            }
-            else {
-                // count add one
-                await rateLimit.update({ count: rateLimit.count + 1 })
-                    .then(function() { console.log('ip limit update completed'); });
-                
-                const resetTimeUTC = new Date().getTime() / 1000;
-                res.set({
-                    'X-RateLimit-Remaining': config.rateLimitCount - rateLimit.count,
-                    'X-RateLimit-Reset': Math.round(resetTimeUTC + 60 * 60)
-                });
-                next();
-            }
-            
-        }
-        else {
-            const newRateLimit = await RateLimit.create({ 
-                ip: req.ip, 
-                time: new Date(),
-                count: 1
-            })
-                .then(function() { console.log("created"); });
-            
-            const resetTimeUTC = new Date().getTime() / 1000;
-            res.set({
-                'X-RateLimit-Remaining': config.rateLimitCount - 1,
-                'X-RateLimit-Reset': Math.round(resetTimeUTC + 60 * 60)
-            });
-            next();
-        } 
-    })();
-});
-
+app.use(rateLimit);
 app.use('/', indexRouter);
 
 // catch 404 and forward to error handler
