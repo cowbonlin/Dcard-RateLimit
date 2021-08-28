@@ -1,4 +1,4 @@
-# Dcard Internship Homeworl: RateLimit Problem
+# RateLimit Problem
 ## Build and run services
 ```
 $ docker-compose build
